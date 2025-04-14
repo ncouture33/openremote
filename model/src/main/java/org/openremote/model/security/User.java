@@ -85,10 +85,12 @@ public class User {
     @Formula("(SELECT C.SECRET FROM PUBLIC.CLIENT C WHERE C.ID = SERVICE_ACCOUNT_CLIENT_LINK)")
     protected String secret; // For service users
 
-    @OneToMany(fetch = FetchType.EAGER)
-    @JoinColumn(name = "USER_ID")
+    //    @OneToMany(fetch = FetchType.EAGER)
+//    @JoinColumn(name = "USER_ID")
+//    protected List<UserAttribute> attributes;
     @JsonIgnore
-    protected List<UserAttribute> attributes;
+    @Transient
+    protected UserAttributes attributes;
 
     public User() {
     }
@@ -149,21 +151,24 @@ public class User {
 
     @JsonIgnore
     public List<UserAttribute> getAttributes() {
-        return attributes;
+        if (this.attributes == null) {
+            return null;
+        }
+        return attributes.getAttributes();
     }
 
     @JsonIgnore
     public User setAttributes(UserAttribute...attributes) {
-        this.attributes = attributes == null ? null : Arrays.asList(attributes);
+        this.attributes = attributes == null ? null : new UserAttributes(Arrays.asList(attributes));
         return this;
     }
 
     @JsonProperty
     protected User setAttributes(Map<String, List<String>> attributes) {
         if (attributes == null) {
-            this.attributes = new ArrayList<>();
+            this.attributes = new UserAttributes();
         } else {
-            this.attributes = new ArrayList<>(attributes.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(v -> new UserAttribute(entry.getKey(), v))).toList());
+            this.attributes = new UserAttributes(attributes.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(v -> new UserAttribute(entry.getKey(), v))).toList());
         }
         return this;
     }
@@ -173,26 +178,26 @@ public class User {
         if (attributes == null) {
             return null;
         }
-        return attributes.stream().collect(Collectors.groupingBy(UserAttribute::getName, Collectors.mapping(UserAttribute::getValue, Collectors.toList())));
+        return attributes.getAttributeMap();
     }
 
     public User setAttribute(String key, String value) {
         if (attributes == null) {
-            attributes = new ArrayList<>();
+            attributes = new UserAttributes();
         } else {
-            attributes.removeIf(attr -> attr.getName().equals(key));
+            attributes.removeIf(key);
         }
         attributes.add(new UserAttribute(key, value));
         return this;
     }
 
     public boolean hasAttribute(String key) {
-        return attributes != null && attributes.stream().anyMatch(attr -> attr.getName().equals(key));
+        return attributes != null && attributes.hasAttribute(key);
     }
 
     public User removeAttribute(String key) {
         if (attributes != null) {
-            attributes.removeIf(attr -> attr.getName().equals(key));
+            attributes.removeIf(key);
         }
         return this;
     }
@@ -278,13 +283,13 @@ public class User {
     @Override
     public String toString() {
         return getClass().getName() + "{" +
-            "realm='" + realm + '\'' +
-            ", id='" + id + '\'' +
-            ", username='" + username + '\'' +
-            ", firstName='" + firstName + '\'' +
-            ", lastName='" + lastName + '\'' +
-            ", email='" + email + '\'' +
-            ", enabled=" + enabled +
-            '}';
+                "realm='" + realm + '\'' +
+                ", id='" + id + '\'' +
+                ", username='" + username + '\'' +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", email='" + email + '\'' +
+                ", enabled=" + enabled +
+                '}';
     }
 }
